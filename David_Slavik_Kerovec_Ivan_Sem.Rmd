@@ -1,0 +1,187 @@
+---
+title: "Predikcija odustajanja učenika od školovanja i akademski uspjeh 1"
+author: "David Slavik, Ivan Kerovec"
+output:
+  html_document: 
+    toc: true
+  pdf_document: default
+---
+
+```{r warning=FALSE, message=FALSE}
+library(readr)
+data <- read_delim("data.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+```
+
+```{r warning=FALSE, message=FALSE}
+library(dplyr)
+sample_data <- data %>% 
+dplyr::sample_n(1500, replace = FALSE,)
+```
+
+```{r warning=FALSE, message=FALSE}
+summary(sample_data)
+
+library(psych) 
+
+sample_data$`Marital status` <- as.factor(sample_data$`Marital status`)
+describe(sample_data, check=FALSE, quant = c(.25,.75, IQR = TRUE, omit = TRUE))
+
+```
+
+```{r warning=FALSE, message=FALSE}
+barplot(table(sample_data$Target),                                 # apsolutne frekvencije
+        col = "lightblue",
+        main = "Akademski status",
+        xlab = "Status",
+        ylab = "frekvencija")
+
+hist(sample_data$`Admission grade`)
+
+
+hist(sample_data$`Previous qualification (grade)`)
+
+app_order=as.factor(sample_data$`Application order`)
+course=as.factor(sample_data$Course)
+gender=as.factor(sample_data$Gender)
+
+tar<- as.factor(sample_data$Target)
+
+tab <- table(tar, app_order)
+tab
+
+barplot(tab, beside=T, legend=T)
+
+# Ovisi li poredak izbora studijskog programa o akademskoj uspješnosti studenata?
+#H0...Poredak izbora studijskog programa je neovisan o akademskoj uspješnosti studenata.
+#H1...Poredak izbora studijskog programa je ovisan o akademskoj uspješnosti studenata.
+
+# S razinom signifikantnosti od 1% možemo zaključiti da je poredak izbora studijskog programa ovisan o akademskoj uspješnosti studenata.
+CTest <- chisq.test(tab, correct=TRUE, )
+CTest
+
+
+tab2 <- table(tar, course)
+tab2
+
+barplot(tab2, beside=T, legend=T)
+CTest2 <- chisq.test(tab2, correct=TRUE, )
+CTest2
+
+# Ovisi li odabir studija o akademskoj uspješnosti studenata?
+# H0...Odabir studija je neovisan o akademskoj uspješnosti studenata.
+# H1...Odabir studija je ovisan o akademskoj uspješnosti studenata.
+
+
+tab3 <- table(tar, gender)
+tab3
+
+barplot(tab3, beside=T, legend=T)
+
+CTest3 <- chisq.test(tab3, correct=TRUE, )
+CTest3
+```
+
+
+```{r warning=FALSE, message=FALSE, message=FALSE}
+boxplot(sample_data$`Admission grade`, main = "Boxplot dijagram varijable Admission grade", xlab = "", ylab = "Ocjena", col = "lightblue")
+boxplot(sample_data$`Previous qualification (grade)`, main = "Boxplot dijagram varijable Previous qualification (grade)", xlab = "", ylab = "Ocjena", col = "lightblue")
+
+shapiro.test(sample_data$`Admission grade`)
+shapiro.test(sample_data$`Previous qualification (grade)`)
+
+qqnorm(sample_data$`Admission grade`)
+qqline(sample_data$`Admission grade`, lty = 2, col = "red")
+
+qqnorm(sample_data$`Previous qualification (grade)`)
+qqline(sample_data$`Previous qualification (grade)`, lty = 2, col = "red")
+
+#Prema rezultatima S-W testa, podaci o ocjenama nisu u normalnoj razdiobi
+#Koristi se neparametarski test
+
+wilcox.test(sample_data$`Admission grade`,mu = 125)
+wilcox.test(sample_data$`Previous qualification (grade)`, mu = 130)
+
+#S razinom signifikantnosti od 1% možemo zaključiti da se aritmetička sredina prijemne ocijene te prethodne kvalifikacijske ocijene statistički razlikuje od stvarne. 
+
+```
+
+```{r warning=FALSE, message=FALSE, message=FALSE}
+library(nortest)
+
+lillie.test(sample_data$`Previous qualification (grade)`)
+lillie.test(sample_data$`Admission grade`)
+
+#skup studenata koji su ili završili, ili se ispisali
+skup <- subset(sample_data, sample_data$Target == "Dropout" | sample_data$Target == "Graduate")
+
+#testiramo da li postoji razlika u prijemnim ocjenama između dropouta i graduatea
+t.test(skup$`Admission grade` ~ skup$Target, alternative='two.sided', conf.level=.95, var.equal=FALSE)
+#testiramo da li postoji razlika u prethodnim kvalifikacijskim ocjenama između dropouta i graduatea
+t.test(skup$`Previous qualification (grade)` ~ skup$Target, alternative='two.sided', conf.level=.95, var.equal=FALSE)
+
+
+```
+
+```{r warning=FALSE, message=FALSE}
+library(nortest)
+
+lillie.test(skup$`Previous qualification (grade)`)
+lillie.test(skup$`Admission grade`)
+
+#testiramo da li postoji razlika u prijemnim ocjenama između dropouta i graduatea
+t.test(skup$`Admission grade` ~ skup$`Scholarship holder`, alternative='two.sided', conf.level=.95, var.equal=FALSE)
+#S razinom signifikantnosti od 5% možemo zaključiti da ne postoji značajna razlika kod prijemnih ocjena između primatelja i neprimatelja stipendije
+
+
+#testiramo da li postoji razlika u prethodnim kvalifikacijskim ocjenama između dropouta i graduatea
+t.test(skup$`Previous qualification (grade)` ~ skup$`Scholarship holder`, alternative='two.sided', conf.level=.95, var.equal=FALSE)
+#S razinom signifikantnosti od 5% možemo zaključiti da postoji značajna razlika kod prethodnih kvalifikacijskih ocjenama između primatelja i neprimatelja stipendije
+
+```
+
+```{r warning=FALSE, message=FALSE}
+# dropout_skup <- subset(skup, skup$Target == "Dropout")
+# graduate_skup <- subset(skup, skup$Target == "Graduate")
+# 
+# lillie.test(dropout_skup$`Curricular units 1st sem (enrolled)`)
+# hist(dropout_skup$`Curricular units 1st sem (enrolled)`)
+# 
+# lillie.test(graduate_skup$`Curricular units 1st sem (enrolled)`)
+# hist(graduate_skup$`Curricular units 1st sem (enrolled)`)
+# 
+# lillie.test(dropout_skup$`Curricular units 1st sem (approved)`)
+# hist(dropout_skup$`Curricular units 1st sem (approved)`)
+# 
+# lillie.test(graduate_skup$`Curricular units 1st sem (approved)`)
+# hist(graduate_skup$`Curricular units 1st sem (approved)`)
+# 
+# wilcox.test(dropout_skup$`Curricular units 1st sem (enrolled)`, dropout_skup$`Curricular units 1st sem (approved)`, alternative='two.sided', conf.level=.95, paired = TRUE, var.equal = FALSE)
+# 
+# wilcox.test(graduate_skup$`Curricular units 1st sem (enrolled)`, graduate_skup$`Curricular units 1st sem (approved)`, alternative='two.sided', conf.level=.95, paired = TRUE, var.equal = FALSE)
+```
+
+```{r warning=FALSE, message=FALSE}
+imastipendiju_skup <- subset(skup, skup$`Scholarship holder` == 1)
+nemastipendiju_skup <- subset(skup, skup$`Scholarship holder` == 0)
+
+lillie.test(imastipendiju_skup$`Previous qualification (grade)`)
+lillie.test(imastipendiju_skup$`Admission grade`)
+hist(imastipendiju_skup$`Previous qualification (grade)`)
+hist(imastipendiju_skup$`Admission grade`)
+
+lillie.test(nemastipendiju_skup$`Previous qualification (grade)`)
+lillie.test(imastipendiju_skup$`Admission grade`)
+hist(nemastipendiju_skup$`Previous qualification (grade)`)
+hist(nemastipendiju_skup$`Admission grade`)
+
+#zavisni uzorci
+#testira se razlika između prethodnih kvalifikacijskih ocjena i prijemnih ocjena kod primatelja i neprimatelja stipendije
+wilcox.test(nemastipendiju_skup$`Previous qualification (grade)`, nemastipendiju_skup$`Admission grade`, alternative='two.sided', conf.level=.95, paired = TRUE, var.equal = FALSE)
+
+wilcox.test(imastipendiju_skup$`Previous qualification (grade)`, imastipendiju_skup$`Admission grade`, alternative='two.sided', conf.level=.95, paired = TRUE, var.equal = FALSE)
+
+```
+
+```{r warning=FALSE, message=FALSE}
+
+```
